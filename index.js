@@ -44,16 +44,20 @@ let clients = [];
 	//Get messages from repo
 	let messages = [];
 	let activeMessage = null;
-	if (clients.length) {
-		const defaultClient = clients[0];
-		const msgRepo = await defaultClient.getEntity('myrepository9');
-		// Fetch the last 10 messages
-		messages = await defaultClient.getMessages(msgRepo, { limit: 10 });
-		messages = messages.filter((message) => message.media);
-	} else {
-		console.log('No clients connected.');
-		return;
+	async function fetchMessages() {
+		if (clients.length) {
+			const defaultClient = clients[0];
+			await defaultClient.connect();
+			const msgRepo = await defaultClient.getEntity('myrepository9');
+			// Fetch the last 10 messages
+			messages = await defaultClient.getMessages(msgRepo, { limit: 10 });
+			messages = messages.filter((message) => message.media);
+		} else {
+			console.log('No clients connected.');
+			return;
+		}
 	}
+	fetchMessages();
 
 	function setActiveMessage() {
 		// If there's no active message, start with the first one
@@ -80,6 +84,7 @@ let clients = [];
 			for (const client of clients) {
 				try {
 					setActiveMessage();
+					await client.connect();
 					await client.sendFile(group, {
 						file: activeMessage.media,
 						caption: activeMessage.message || '', // Include the caption if it exists
@@ -90,6 +95,9 @@ let clients = [];
 						`Failed: client ${client.apiId} sending to ${group}`,
 						error
 					);
+					if (error.code == 400) {
+						fetchMessages();
+					}
 				}
 			}
 		}
